@@ -332,7 +332,9 @@ class ChatBot:
 
         # 处理适配器响应消息
         if hasattr(message, "message_segment") and message.message_segment:
+            logger.info(f"[DEBUG bot.py] 检测到message_segment，type={message.message_segment.type}")
             if message.message_segment.type == "adapter_response":
+                logger.info(f"[DEBUG bot.py] 识别为adapter_response，即将调用handle_adapter_response")
                 await self.handle_adapter_response(message)
                 return True
             elif message.message_segment.type == "adapter_command":
@@ -345,21 +347,26 @@ class ChatBot:
     async def handle_adapter_response(self, message: MessageRecv):
         """处理适配器命令响应"""
         try:
+            logger.info(f"[DEBUG bot.py] 步骤1: handle_adapter_response被调用")
             from src.plugin_system.apis.send_api import put_adapter_response
 
             seg_data = message.message_segment.data
+            logger.info(f"[DEBUG bot.py] 步骤2: seg_data类型={type(seg_data)}, 是dict={isinstance(seg_data, dict)}")
+
             if isinstance(seg_data, dict):
                 request_id = seg_data.get("request_id")
                 response_data = seg_data.get("response")
+                logger.info(f"[DEBUG bot.py] 步骤3: request_id={request_id}, 有response={response_data is not None}")
             else:
                 request_id = None
                 response_data = None
 
             if request_id and response_data:
-                logger.debug(f"收到适配器响应: request_id={request_id}")
+                logger.info(f"[DEBUG bot.py] 步骤4: 收到适配器响应，即将调用put_adapter_response, request_id={request_id}")
                 put_adapter_response(request_id, response_data)
+                logger.info(f"[DEBUG bot.py] 步骤5: put_adapter_response调用完成")
             else:
-                logger.warning("适配器响应消息格式不正确")
+                logger.warning(f"[DEBUG bot.py] 适配器响应消息格式不正确: request_id={request_id}, response_data={response_data}")
 
         except Exception as e:
             logger.error(f"处理适配器响应时出错: {e}")
@@ -434,6 +441,13 @@ class ChatBot:
             # print(message_data)
             # logger.debug(str(message_data))
             message = MessageRecv(message_data)
+
+            # 优先处理adapter_response消息（在echo检查之前）
+            if hasattr(message, "message_segment") and message.message_segment:
+                if message.message_segment.type == "adapter_response":
+                    logger.info(f"[DEBUG bot.py message_process] 检测到adapter_response，立即处理")
+                    await self.handle_adapter_response(message)
+                    return
 
             group_info = message.message_info.group_info
             user_info = message.message_info.user_info
