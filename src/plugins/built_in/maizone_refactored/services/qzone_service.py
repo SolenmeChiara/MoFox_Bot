@@ -882,7 +882,11 @@ class QZoneService:
 
                 logger.info(f"成功获取到 {len(feeds_list)} 条说说 from {t_qq} (使用统一JSON接口)")
                 return feeds_list
+            except RuntimeError:
+                # QQ空间API业务错误，向上传播让调用者处理
+                raise
             except Exception as e:
+                # 其他异常（如网络错误、JSON解析错误等），记录后返回空列表
                 logger.error(f"获取说说列表失败: {e}", exc_info=True)
                 return []
 
