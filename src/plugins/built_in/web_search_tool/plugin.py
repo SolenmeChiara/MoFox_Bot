@@ -44,6 +44,7 @@ class WEBSEARCHPLUGIN(BasePlugin):
             from .engines.exa_engine import ExaSearchEngine
             from .engines.metaso_engine import MetasoSearchEngine
             from .engines.searxng_engine import SearXNGSearchEngine
+            from .engines.serper_engine import SerperSearchEngine
             from .engines.tavily_engine import TavilySearchEngine
 
             # 实例化所有搜索引擎，这会触发API密钥管理器的初始化
@@ -53,6 +54,7 @@ class WEBSEARCHPLUGIN(BasePlugin):
             bing_engine = BingSearchEngine()
             searxng_engine = SearXNGSearchEngine()
             metaso_engine = MetasoSearchEngine()
+            serper_engine = SerperSearchEngine()
 
              # 报告每个引擎的状态
             engines_status = {
@@ -62,6 +64,7 @@ class WEBSEARCHPLUGIN(BasePlugin):
                 "Bing": bing_engine.is_available(),
                 "SearXNG": searxng_engine.is_available(),
                 "Metaso": metaso_engine.is_available(),
+                "Serper": serper_engine.is_available(),
             }
 
             available_engines = [name for name, available in engines_status.items() if available]
