@@ -328,14 +328,6 @@ class MainSystem:
             start_time = time.time()
             message_id = message_data.get("message_info", {}).get("message_id", "UNKNOWN")
 
-            # DEBUG: 记录所有收到的消息
-            message_segment = message_data.get("message_segment")
-            if message_segment:
-                msg_type = message_segment.get("type") if isinstance(message_segment, dict) else getattr(message_segment, "type", "UNKNOWN")
-                logger.info(f"[DEBUG main.py] 收到消息: message_id={message_id}, type={msg_type}")
-            else:
-                logger.info(f"[DEBUG main.py] 收到消息: message_id={message_id}, 无message_segment")
-
             # 检查系统是否正在关闭
             if self._shutting_down:
                 logger.warning(f"系统正在关闭，拒绝处理消息 {message_id}")

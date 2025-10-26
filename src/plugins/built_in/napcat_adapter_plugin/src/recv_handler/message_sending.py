@@ -52,9 +52,6 @@ class MessageSending:
             message_base: MessageBase: 消息基类，包含发送目标和消息内容等信息
         """
         try:
-            logger.info(f"[DEBUG message_send] 开始发送消息，type={message_base.message_segment.type if message_base.message_segment else 'None'}")
-            logger.info(f"[DEBUG message_send] platform={message_base.message_info.platform}")
-
             # 检查maibot_router是否已初始化
             if self.maibot_router is None:
                 logger.warning("MoFox-Bot router未初始化，尝试重新连接")
@@ -65,7 +62,6 @@ class MessageSending:
             # 检查是否需要切片发送
             message_dict = message_base.to_dict()
 
-            logger.info(f"[DEBUG message_send] 检查是否需要切片")
             if chunker.should_chunk_message(message_dict):
                 logger.info("消息过大，进行切片发送到 MoFox-Bot")
 
@@ -108,10 +104,7 @@ class MessageSending:
                 return True
             else:
                 # 直接发送小消息
-                logger.info(f"[DEBUG message_send] 消息无需切片，直接发送")
-                logger.info(f"[DEBUG message_send] 即将调用 maibot_router.send_message()")
                 send_status = await self.maibot_router.send_message(message_base)
-                logger.info(f"[DEBUG message_send] maibot_router.send_message() 返回: {send_status}")
                 if not send_status:
                     raise RuntimeError("可能是路由未正确配置或连接异常")
                 return send_status

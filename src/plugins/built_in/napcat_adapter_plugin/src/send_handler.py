@@ -652,17 +652,11 @@ class SendHandler:
             request_id: 请求ID
         """
         try:
-            logger.info(f"[DEBUG send_resp] 步骤1: 准备发送适配器响应，request_id={request_id}")
-            logger.info(f"[DEBUG send_resp] 步骤2: platform={original_message.message_info.platform}")
-            logger.info(f"[DEBUG send_resp] 步骤3: message_info类型={type(original_message.message_info)}")
-
             # 修改 additional_config，添加 echo 字段
             if original_message.message_info.additional_config is None:
                 original_message.message_info.additional_config = {}
 
             original_message.message_info.additional_config["echo"] = True
-
-            logger.info(f"[DEBUG send_resp] 步骤4: 设置echo=True完成")
 
             # 修改 message_segment 为 adapter_response 类型
             original_message.message_segment = Seg(
@@ -670,9 +664,7 @@ class SendHandler:
                 data={"request_id": request_id, "response": response_data, "timestamp": int(time.time() * 1000)},
             )
 
-            logger.info(f"[DEBUG send_resp] 步骤5: 设置message_segment完成，即将调用message_send()")
             await message_send_instance.message_send(original_message)
-            logger.info(f"[DEBUG send_resp] 步骤6: message_send()调用完成，request_id={request_id}")
 
         except Exception as e:
             logger.error(f"发送适配器命令响应时出错: {e}")
