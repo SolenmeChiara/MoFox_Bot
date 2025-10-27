@@ -140,50 +140,79 @@ class QZoneService:
 
         logger.info(f"[DEBUG] API客户端获取成功，准备读取说说")
         num_to_read = self.get_config("read.read_number", 5)
-        try:
-            logger.info(f"[DEBUG] 开始调用 list_feeds，target_qq={target_qq}, num={num_to_read}")
-            feeds = await api_client["list_feeds"](target_qq, num_to_read)
-            logger.info(f"[DEBUG] list_feeds 返回，feeds数量={len(feeds) if feeds else 0}")
-            if not feeds:
-                return {"success": True, "message": f"没有从'{target_name}'的空间获取到新说说。"}
 
-            logger.info(f"[DEBUG] 准备处理 {len(feeds)} 条说说")
-            total_liked = 0
-            total_commented = 0
-            for feed in feeds:
-                result = await self._process_single_feed(feed, api_client, target_qq, target_name)
-                if result["liked"]:
-                    total_liked += 1
-                if result["commented"]:
-                    total_commented += 1
-                await asyncio.sleep(random.uniform(3, 7))
+        # 尝试执行，如果Cookie失效则自动重试一次
+        for retry_count in range(2):  # 最多尝试2次
+            try:
+                logger.info(f"[DEBUG] 开始调用 list_feeds，target_qq={target_qq}, num={num_to_read}")
+                feeds = await api_client["list_feeds"](target_qq, num_to_read)
+                logger.info(f"[DEBUG] list_feeds 返回，feeds数量={len(feeds) if feeds else 0}")
+                if not feeds:
+                    return {"success": True, "message": f"没有从'{target_name}'的空间获取到新说说。"}
 
-            # 构建详细的反馈信息
-            stats_parts = []
-            if total_liked > 0:
-                stats_parts.append(f"点赞了{total_liked}条")
-            if total_commented > 0:
-                stats_parts.append(f"评论了{total_commented}条")
+                logger.info(f"[DEBUG] 准备处理 {len(feeds)} 条说说")
+                total_liked = 0
+                total_commented = 0
+                for feed in feeds:
+                    result = await self._process_single_feed(feed, api_client, target_qq, target_name)
+                    if result["liked"]:
+                        total_liked += 1
+                    if result["commented"]:
+                        total_commented += 1
+                    await asyncio.sleep(random.uniform(3, 7))
 
-            if stats_parts:
-                stats_msg = "、".join(stats_parts)
-                message = f"成功查看了'{target_name}'的空间，{stats_msg}。"
-            else:
-                message = f"成功查看了'{target_name}'的 {len(feeds)} 条说说，但这次没有进行互动。"
+                # 构建详细的反馈信息
+                stats_parts = []
+                if total_liked > 0:
+                    stats_parts.append(f"点赞了{total_liked}条")
+                if total_commented > 0:
+                    stats_parts.append(f"评论了{total_commented}条")
 
-            return {
-                "success": True,
-                "message": message,
-                "stats": {"total": len(feeds), "liked": total_liked, "commented": total_commented},
-            }
-        except RuntimeError as e:
-            # QQ空间API返回的业务错误（如权限问题）
-            logger.warning(f"QQ空间API错误: {e}")
-            return {"success": False, "message": str(e)}
-        except Exception as e:
-            # 其他未知异常
-            logger.error(f"读取和处理说说时发生异常: {e}", exc_info=True)
-            return {"success": False, "message": f"处理说说时出现异常: {e}"}
+                if stats_parts:
+                    stats_msg = "、".join(stats_parts)
+                    message = f"成功查看了'{target_name}'的空间，{stats_msg}。"
+                else:
+                    message = f"成功查看了'{target_name}'的 {len(feeds)} 条说说，但这次没有进行互动。"
+
+                return {
+                    "success": True,
+                    "message": message,
+                    "stats": {"total": len(feeds), "liked": total_liked, "commented": total_commented},
+                }
+            except RuntimeError as e:
+                # QQ空间API返回的业务错误
+                error_msg = str(e)
+
+                # 检查是否是Cookie失效（-3000错误）
+                if "错误码: -3000" in error_msg and retry_count == 0:
+                    logger.warning(f"检测到Cookie失效（-3000错误），准备删除缓存并重试...")
+
+                    # 删除Cookie缓存文件
+                    cookie_file = self.cookie_service._get_cookie_file_path(qq_account)
+                    if cookie_file.exists():
+                        try:
+                            cookie_file.unlink()
+                            logger.info(f"已删除过期的Cookie缓存文件: {cookie_file}")
+                        except Exception as delete_error:
+                            logger.error(f"删除Cookie文件失败: {delete_error}")
+
+                    # 重新获取API客户端（会自动获取新Cookie）
+                    logger.info("正在重新获取Cookie...")
+                    api_client = await self._get_api_client(qq_account, stream_id)
+                    if not api_client:
+                        logger.error("重新获取API客户端失败")
+                        return {"success": False, "message": "Cookie已失效，且无法重新获取。请检查Bot和Napcat连接状态。"}
+
+                    logger.info("Cookie已更新，正在重试...")
+                    continue  # 继续循环，重试一次
+
+                # 其他业务错误或重试后仍失败
+                logger.warning(f"QQ空间API错误: {e}")
+                return {"success": False, "message": error_msg}
+            except Exception as e:
+                # 其他未知异常
+                logger.error(f"读取和处理说说时发生异常: {e}", exc_info=True)
+                return {"success": False, "message": f"处理说说时出现异常: {e}"}
 
     async def monitor_feeds(self, stream_id: str | None = None):
         """监控并处理所有好友的动态，包括回复自己说说的评论"""
