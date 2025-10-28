@@ -473,6 +473,10 @@ class OpenaiClient(BaseClient):
         # 将tool_options转换为OpenAI API所需的格式
         tools: Iterable[ChatCompletionToolParam] = _convert_tool_options(tool_options) if tool_options else NOT_GIVEN  # type: ignore
 
+        # 判断是否使用新的 max_completion_tokens 参数（GPT-4.1/5 系列）
+        use_new_param = model_info.model_identifier.startswith(("gpt-4.1", "gpt-5"))
+        tokens_param = {"max_completion_tokens": max_tokens} if use_new_param else {"max_tokens": max_tokens}
+
         client = self._create_client()
         try:
             if model_info.force_stream_mode:
@@ -482,7 +486,7 @@ class OpenaiClient(BaseClient):
                         messages=messages,
                         tools=tools,
                         temperature=temperature,
-                        max_tokens=max_tokens,
+                        **tokens_param,
                         stream=True,
                         response_format=NOT_GIVEN,
                         extra_body=extra_params,
@@ -505,7 +509,7 @@ class OpenaiClient(BaseClient):
                         messages=messages,
                         tools=tools,
                         temperature=temperature,
-                        max_tokens=max_tokens,
+                        **tokens_param,
                         stream=False,
                         response_format=NOT_GIVEN,
                         extra_body=extra_params,
@@ -591,7 +595,7 @@ class OpenaiClient(BaseClient):
                 model_name=model_info.name,
                 provider_name=model_info.api_provider,
                 prompt_tokens=raw_response.usage.prompt_tokens or 0,
-                completion_tokens=raw_response.usage.completion_tokens or 0,  # type: ignore
+                completion_tokens=getattr(raw_response.usage, "completion_tokens", 0) or 0,  # embedding API 没有 completion_tokens
                 total_tokens=raw_response.usage.total_tokens or 0,
             )
 
