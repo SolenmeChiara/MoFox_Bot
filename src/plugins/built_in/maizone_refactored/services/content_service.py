@@ -139,7 +139,7 @@ class ContentService:
                         if description:
                             image_descriptions.append(description)
 
-                extra_info = "你正在浏览一个人的空间内容。由于系统限制，你不知道其他说说是什么样子。但这不妨碍你对说说发出评论，专心针对一条具体的说说内容生成评论。不要要求更多上下文。"
+                extra_info = "你正在准备评论一个人的空间内容。和X(前推特)一样，qq空间是别人在自己的空间内自言自语的一片小天地，很多言论，包括含有负面情绪的言论，并非针对你。当下系统环境中你并不是与其单独聊天。你只是路过发出评论，所以请保持尊重。但由于系统限制，你不知道其他说说是什么样子。但这不妨碍你对说说发出评论，专心针对一条具体的说说内容生成评论。不要要求更多上下文。如果你不想评论，直接返回空文本/换行符/空格。"
                 if image_descriptions:
                     extra_info += "说说中包含的图片内容如下，这可能会产生问题，如果你看不到任何描述图片的自然语言内容，请直接返回空文本/换行符/空格：\n" + "\n".join(image_descriptions)
 
@@ -148,7 +148,7 @@ class ContentService:
                     reply_to += f"\n[转发内容]: {rt_con}"
 
                 success, reply_set, _ = await generator_api.generate_reply(
-                    chat_stream=chat_stream, reply_to=reply_to, extra_info=extra_info, request_type="maizone.comment"
+                    chat_stream=chat_stream, reply_to=reply_to, extra_info=extra_info, request_type="maizone.comment", enable_splitter=False
                 )
 
                 if success and reply_set:
@@ -200,7 +200,7 @@ class ContentService:
                     chat_stream=chat_stream,
                     reply_to=reply_to,
                     extra_info=extra_info,
-                    request_type="maizone.comment_reply",
+                    request_type="maizone.comment_reply", enable_splitter=False,
                 )
 
                 if success and reply_set:
