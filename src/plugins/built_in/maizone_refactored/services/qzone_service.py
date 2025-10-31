@@ -400,7 +400,8 @@ class QZoneService:
         """
         content = feed.get("content", "")
         fid = feed.get("tid", "")
-        rt_con = feed.get("rt_con", "")
+        # 正确提取转发内容（rt_con 可能是字典或字符串）
+        rt_con = feed.get("rt_con", {}).get("content", "") if isinstance(feed.get("rt_con"), dict) else feed.get("rt_con", "")
         images = feed.get("images", [])
 
         result = {"liked": False, "commented": False}
